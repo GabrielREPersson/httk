@@ -1,3 +1,18 @@
+#!/usr/bin/env python3
+# @Author: Gabriel R. E. Persson
+# @Date of creation:   2021-09-15 13:49:54
+# @Email:  gabriel.persson@liu.se
+# @Last Modified by:   Gabriel R. E. Persson
+# @Last Modified time: 2021-11-23 17:35:11
+"""
+Purpose:
+
+Workflow:
+--
+
+TODO:
+--
+"""
 #
 #    The high-throughput toolkit (httk)
 #    Copyright (C) 2012-2015 Rickard Armiento
@@ -16,6 +31,10 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys, collections, queue, bz2
+try:
+    from collections.abc import Iterable
+except AttributeError:
+    from collections import Iterable
 
 unicode_type = str
 
@@ -30,7 +49,7 @@ def print_(*args,**kwargs):
     print(*args,**kwargs)
 
 def is_sequence(l):
-    return isinstance(l, collections.Iterable) and not isinstance(l, str)
+    return isinstance(l, Iterable) and not isinstance(l, str)
     #return (not hasattr(arg, "strip") and hasattr(arg, "__getitem__") or
     #        (hasattr(arg, "__iter__") and not isinstance(arg, str)))
 
