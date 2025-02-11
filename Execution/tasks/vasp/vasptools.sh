@@ -732,10 +732,90 @@ function VASP_OUTCAR_CHECKER {
     local MSGFILE="$1"
     local EXITPID="$2"
 
+	local M_CONSTR=$(VASP_GET_TAG M_CONSTR)
+
     echo "OUTCAR_CHECKER ACTIVE" > "$MSGFILE"
     # Now we can follow the OUTCAR
-    HT_TASK_FOLLOW_FILE OUTCAR "$EXITPID" | awk -v"msgfile=$MSGFILE" '
-    /^ *total allocation   :    [0-9.]* KBytes/ {
+    HT_TASK_FOLLOW_FILE OUTCAR "$EXITPID" | awk -v"msgfile=$MSGFILE" -v"M_CONSTR=$M_CONSTR" '
+    BEGIN {
+	  	split(M_CONSTR,M," ");
+
+		# Initialize counters for Mx, My, Mz
+		cx = cy = cz = 1
+
+		# Loop through the array M
+		for (i in M) {
+			if ((i - 1) % 3 == 0) {
+				Mx[cx++] = M[i]
+			} else if ((i - 1) % 3 == 1) {
+				My[cy++] = M[i]
+			} else {
+				Mz[cz++] = M[i]
+			}
+		}
+		section = "";  # Initialize section tracking variable
+
+	} 
+
+	/^magnetization \(x\)$/ {
+		section = "magnetization_x";  # Mark the start of "magnetization (x)" section
+		next;                         # Skip to next line
+	}
+
+	/^magnetization \(y\)$/ {
+		section = "magnetization_y";  # Start "magnetization(y)" section
+		next;
+	}
+
+	/^magnetization \(z\)$/ {
+		section = "magnetization_z";  # Start "magnetization(z)" section
+		next;
+	}
+
+	/^-/ && section != "" {
+    # If a separator line (----) is found, skip it
+    next;
+	}
+
+	/^[[:space:]]*$/ {
+    # Reset section if a blank line is encountered
+    section = "";
+    next;
+	}
+
+	section == "magnetization_x" {
+		# Process the "magnetization(x)" section
+		if (NF >= 4) {
+			tot = $NF;  # Capture the tot field
+			if (Mx[$1] != 0 && sqrt(tot^2) < 0.005) {
+				print "MAGNETIZATIONTOOSMALL" >> msgfile;
+            	exit 2;
+			}
+		}
+	}	
+
+	section == "magnetization_y" {
+		# Process the "magnetization(y)" section
+		if (NF >= 4) {
+			My = $NF;  # Capture the tot field
+			if (My != 0 && sqrt(My^2) > 0.005) {
+				print "MAGNETIZATIONTOOSMALL" >> msgfile;
+            	exit 2;
+			}
+		}
+	}
+
+	section == "magnetization_z" {
+		# Process the "magnetization(z)" section
+		if (NF >= 4) {
+			Mz = $NF;  # Capture the tot field
+			if (Mz != 0 && sqrt(Mz^2) > 0.005) {
+				print "MAGNETIZATIONTOOSMALL" >> msgfile;
+            	exit 2;
+			}
+		}
+	}
+	/^ *total allocation   :    [0-9.]* KBytes/ {
           if($3 > 500000) {
             print "REALSPACEALLOCTOOLARGE" >> msgfile;
             exit 2;
